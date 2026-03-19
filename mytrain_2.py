@@ -1,6 +1,7 @@
 # food101_train.py
-from ultralytics import YOLO
 import os
+
+from ultralytics import YOLO
 
 # ===================== 配置项（修改这里！）=====================
 # 1. 转换后的YOLO格式数据路径（和脚本1的YOLO_DATA_ROOT一致）
@@ -16,12 +17,10 @@ DEVICE = 0  # 有GPU改"0"，无GPU保留cpu
 
 # =============================================================
 
+
 def check_yolo_data():
-    """检查YOLO格式数据是否完整"""
-    required_dirs = [
-        os.path.join(YOLO_DATA_ROOT, "train"),
-        os.path.join(YOLO_DATA_ROOT, "val")
-    ]
+    """检查YOLO格式数据是否完整."""
+    required_dirs = [os.path.join(YOLO_DATA_ROOT, "train"), os.path.join(YOLO_DATA_ROOT, "val")]
     for dir_path in required_dirs:
         if not os.path.exists(dir_path):
             raise FileNotFoundError(f"YOLO数据缺失：{dir_path}")
@@ -50,16 +49,16 @@ if __name__ == "__main__":
             save=True,  # 保存最优模型
             project=TRAIN_RESULT_DIR,
             name="food101_model",  # 模型名称
-            verbose=True  # 显示训练过程
+            verbose=True,  # 显示训练过程
         )
 
         # 4. 验证模型
         print("\n📊 验证模型精度...")
         metrics = model.val()
-        print(f"✅ 训练完成！")
+        print("✅ 训练完成！")
         print(f"Top1精度（识别正确概率）：{metrics.top1:.2f}")
         print(f"Top5精度（前5猜中概率）：{metrics.top5:.2f}")
         print(f"📁 模型保存路径：{os.path.join(TRAIN_RESULT_DIR, 'food101_model', 'weights', 'best.pt')}")
 
     except Exception as e:
-        print(f"❌ 训练失败：{str(e)}")
+        print(f"❌ 训练失败：{e!s}")
