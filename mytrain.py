@@ -14,12 +14,13 @@ FAST_TEST = True
 
 # =============================================================
 
+
 def check_raw_data():
-    """检查原始数据是否完整"""
+    """检查原始数据是否完整."""
     required_paths = [
         os.path.join(FOOD101_RAW_ROOT, "images"),
         os.path.join(FOOD101_RAW_ROOT, "meta", "train.txt"),
-        os.path.join(FOOD101_RAW_ROOT, "meta", "test.txt")
+        os.path.join(FOOD101_RAW_ROOT, "meta", "test.txt"),
     ]
     for path in required_paths:
         if not os.path.exists(path):
@@ -28,8 +29,8 @@ def check_raw_data():
 
 
 def copy_images(txt_path, split_dir, max_num=None):
-    """复制指定txt中的图片到目标目录"""
-    with open(txt_path, "r", encoding="utf-8") as f:
+    """复制指定txt中的图片到目标目录."""
+    with open(txt_path, encoding="utf-8") as f:
         for idx, line in enumerate(f):
             line = line.strip()
             if not line:
@@ -76,9 +77,9 @@ if __name__ == "__main__":
         # 5. 输出结果
         train_cls_num = len(os.listdir(train_dir))
         val_cls_num = len(os.listdir(val_dir))
-        print(f"\n🎉 数据集转换完成！")
+        print("\n🎉 数据集转换完成！")
         print(f"📁 YOLO格式数据路径：{YOLO_DATA_ROOT}")
         print(f"📊 训练集类别数：{train_cls_num} | 验证集类别数：{val_cls_num}")
 
     except Exception as e:
-        print(f"❌ 转换失败：{str(e)}")
+        print(f"❌ 转换失败：{e!s}")
