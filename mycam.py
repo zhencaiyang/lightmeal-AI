@@ -3,13 +3,13 @@ import cv2
 from ultralytics import YOLO
 
 model = YOLO(r"yolov8n.pt")
-results=model(
+results = model(
     source=0,
     stream=True,
 )
 
 for result in results:
-    plotted=result.plot()
-    cv2.imshow("yolo inference",plotted)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    plotted = result.plot()
+    cv2.imshow("yolo inference", plotted)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
