@@ -1,0 +1,23 @@
+# This is an example configuration file
+name: Local Config
+version: 1.0.0
+schema: v1
+models:
+  - model: cld-3-5-sonnet-20241022
+    apiKey: "sk-uhhfqb0lffdbjWfE47A6B23172E7428bB977AaA04b0cDb28"
+    apiBase: "https://vip.apiyi.com/v1"
+    provider: openai
+    title: "Claude 3.5 Sonnet (API易)"
+  - model: gpt-5.2
+    apiKey: "sk-uhhfqb0lffdbjWfE47A6B23172E7428bB977AaA04b0cDb28"
+    apiBase: "https://vip.apiyi.com/v1"
+    provider: openai
+    title: "GPT-5.2"
+
+tabAutocompleteModel:
+  model: cld-3-5-sonnet-20241022
+  apiKey: "sk-uhhfqb0lffdbjWfE47A6B23172E7428bB977AaA04b0cDb28"
+  apiBase: "https://vip.apiyi.com/v1"
+  provider: openai
+
+allowAnonymousTelemetry: false

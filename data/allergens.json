@@ -1,0 +1,114 @@
+{
+  "allergens": [
+    {
+      "id": "peanut",
+      "name": "花生",
+      "keywords": ["花生", "花生油", "花生酱", "peanut", "peanuts", "groundnut"],
+      "category": "坚果类",
+      "severity": "high",
+      "description": "花生过敏是最常见的食物过敏之一，可能导致严重的过敏反应"
+    },
+    {
+      "id": "milk",
+      "name": "牛奶",
+      "keywords": ["牛奶", "乳清", "奶酪", "奶油", "黄油", "milk", "dairy", "lactose", "whey", "cheese", "cream", "butter"],
+      "category": "乳制品",
+      "severity": "medium",
+      "description": "牛奶过敏与乳糖不耐受不同，是免疫系统对牛奶蛋白质的过敏反应"
+    },
+    {
+      "id": "egg",
+      "name": "鸡蛋",
+      "keywords": ["鸡蛋", "蛋清", "蛋黄", "egg", "eggs", "albumin", "ovalbumin", "yolk"],
+      "category": "蛋类",
+      "severity": "medium",
+      "description": "鸡蛋过敏常见于儿童，通常是对蛋清中的蛋白质过敏"
+    },
+    {
+      "id": "shellfish",
+      "name": "贝类",
+      "keywords": ["虾", "蟹", "龙虾", "牡蛎", "蛤蜊", "shrimp", "crab", "lobster", "oyster", "clam", "shellfish", "crustacean"],
+      "category": "海鲜类",
+      "severity": "high",
+      "description": "贝类过敏通常很严重，包括甲壳类和软体动物"
+    },
+    {
+      "id": "fish",
+      "name": "鱼类",
+      "keywords": ["鱼", "金枪鱼", "三文鱼", "鳕鱼", "fish", "tuna", "salmon", "cod"],
+      "category": "海鲜类",
+      "severity": "high",
+      "description": "鱼类过敏可能很严重，与贝类过敏不同"
+    },
+    {
+      "id": "soy",
+      "name": "大豆",
+      "keywords": ["大豆", "黄豆", "豆腐", "豆浆", "soy", "soybean", "tofu", "soymilk", "edamame"],
+      "category": "豆类",
+      "severity": "medium",
+      "description": "大豆过敏常见于儿童，通常随着年龄增长会改善"
+    },
+    {
+      "id": "wheat",
+      "name": "小麦",
+      "keywords": ["小麦", "面粉", "面包", "面条", "wheat", "flour", "bread", "noodle", "gluten", "dough"],
+      "category": "谷物类",
+      "severity": "medium",
+      "description": "小麦过敏与麸质不耐受不同，是对小麦蛋白质的过敏"
+    },
+    {
+      "id": "tree_nuts",
+      "name": "坚果",
+      "keywords": ["杏仁", "核桃", "腰果", "榛子", "松子", "almond", "walnut", "cashew", "hazelnut", "pine nut", "tree nut"],
+      "category": "坚果类",
+      "severity": "high",
+      "description": "树坚果过敏包括各种坚果，通常很严重且终生存在"
+    },
+    {
+      "id": "sesame",
+      "name": "芝麻",
+      "keywords": ["芝麻", "芝麻油", "芝麻酱", "sesame", "sesame oil", "tahini"],
+      "category": "种子类",
+      "severity": "high",
+      "description": "芝麻过敏在亚洲较为常见，可能引起严重反应"
+    },
+    {
+      "id": "mustard",
+      "name": "芥末",
+      "keywords": ["芥末", "芥菜", "mustard", "mustard seed"],
+      "category": "调料类",
+      "severity": "medium",
+      "description": "芥末过敏相对较少见，但可能引起严重反应"
+    },
+    {
+      "id": "celery",
+      "name": "芹菜",
+      "keywords": ["芹菜", "celery", "celery root", "celeriac"],
+      "category": "蔬菜类",
+      "severity": "low",
+      "description": "芹菜过敏在欧洲较为常见"
+    },
+    {
+      "id": "sulfite",
+      "name": "亚硫酸盐",
+      "keywords": ["二氧化硫", "亚硫酸盐", "sulfite", "sulfur dioxide", "sodium bisulfite"],
+      "category": "添加剂",
+      "severity": "medium",
+      "description": "亚硫酸盐过敏可能引发哮喘症状"
+    }
+  ],
+  "cross_contamination_warnings": {
+    "peanut": ["可能含有坚果成分", "在生产花生制品的工厂生产"],
+    "milk": ["可能含有乳制品", "含乳糖"],
+    "egg": ["可能含有蛋制品"],
+    "shellfish": ["可能含有甲壳类成分"],
+    "fish": ["可能含有鱼类成分"],
+    "soy": ["可能含有大豆成分"],
+    "wheat": ["可能含有麸质", "含小麦成分"],
+    "tree_nuts": ["可能含有坚果成分", "在生产坚果制品的工厂生产"],
+    "sesame": ["可能含有芝麻成分"],
+    "mustard": ["可能含有芥末成分"],
+    "celery": ["可能含有芹菜成分"],
+    "sulfite": ["含亚硫酸盐"]
+  }
+}

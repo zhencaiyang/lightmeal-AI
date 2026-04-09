@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>食品识别系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="app">
+        <!-- 左侧：按钮导航 -->
+        <aside class="left-panel">
+            <h2>功能模块</h2>
+
+            <button class="nav-btn active" data-target="ocr">OCR识别</button>
+            <button class="nav-btn" data-target="allergen">过敏原检测</button>
+            <button class="nav-btn" data-target="nutrition">营养建议</button>
+            <button class="nav-btn" data-target="history">历史记录</button>
+            <button class="nav-btn" data-target="settings">系统设置</button>
+            <button class="nav-btn" data-target="userinfo">用户信息</button>
+        </aside>
+
+        <div class="divider"></div>
+
+        <!-- 右侧：内容区 -->
+        <main class="right-panel">
+            <section class="module-panel show" id="ocr">
+                <h1>记录饮食</h1>
+                <p>上传食品配料图，提取文字。</p>
+            </section>
+
+            <section class="module-panel" id="allergen">
+                <h1>过敏原检测</h1>
+                <p>根据识别文字匹配过敏原关键词并给出风险等级。</p>
+
+                <!-- 图片上传区域 -->
+                <div class="image-upload-section">
+                    <h3>📸 图片识别成分表</h3>
+                    <div class="upload-methods">
+                        <div class="upload-method">
+                            <label for="imageUpload" class="upload-btn">
+                                <span class="icon">📁</span>
+                                选择图片
+                            </label>
+                            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                        </div>
+                        <div class="upload-method">
+                            <button id="cameraBtn" class="camera-btn">
+                                <span class="icon">📷</span>
+                                拍照识别
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="image-preview" id="imagePreview" style="display: none;">
+                        <img id="previewImage" src="" alt="预览图片">
+                        <div class="image-actions">
+                            <button id="analyzeImageBtn" class="analyze-btn">🔍 分析图片</button>
+                            <button id="removeImageBtn" class="remove-btn">❌ 移除</button>
+                        </div>
+                    </div>
+                    
+                    <div class="upload-status" id="uploadStatus" style="display: none;">
+                        <div class="status-message">⏳ 正在识别图片中的文字...</div>
+                    </div>
+                </div>
+
+                <!-- 文字输入区域 -->
+                <div class="text-input-section">
+                    <h3>📝 手动输入或编辑成分</h3>
+                    <textarea id="input_text" rows="4" placeholder="在这里输入或编辑配料表文字，也可以从图片识别结果中复制"></textarea>
+                    <button id="checkAllergenBtn">开始检测</button>
+                    <button id="showAllergenListBtn" style="margin-left: 10px; background-color: #17a2b8;">📋 查看过敏原列表</button>
+                </div>
+                
+                <div id="result" style="margin-top:20px;"></div>
+            </section>
+
+            <section class="module-panel" id="nutrition">
+                <h1>营养建议</h1>
+                <p>结合配料与规则库给出营养提醒。</p>
+            </section>
+
+            <section class="module-panel" id="history">
+                <h1>历史记录</h1>
+                <p>展示用户过往识别结果。</p>
+
+            </section>
+
+            <section class="module-panel" id="settings">
+                <h1>系统设置</h1>
+                <p>配置阈值、词典路径、用户过敏偏好等。</p>
+            </section>
+
+            <section class="module-panel" id="userinfo">
+                <h1>用户信息录入</h1>
+                <p>请输入身高</p>
+                <textarea id="height_input" row="1" placeholder="单位:cm"></textarea>
+                <p>请输入体重</p>
+                <textarea id="weight_input" row="1" placeholder="单位:kg"></textarea>
+                <p>请选择性别</p>
+                <label>
+                    <input type="radio" name="gender" value="male" checked> 男
+                </label>
+                <label>
+                    <input type="radio" name="gender" value="female"> 女
+                </label>
+                <button id="BasicInfoInputBtn" onclick="RecordBasicInfo()">录入基本信息</button>
+                <button onclick="testInsertData()" style="margin-left: 10px; background-color: #FFA726;">🧪 测试插入功能</button>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const buttons = document.querySelectorAll(".nav-btn");
+        const panels = document.querySelectorAll(".module-panel");
+
+        buttons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const targetId = btn.dataset.target;
+
+                buttons.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+
+                panels.forEach(p => p.classList.remove("show"));
+                document.getElementById(targetId).classList.add("show");
+            });
+        });
+
+        // ✅ 绑定过敏原检测按钮
+        const allergenBtn = document.getElementById("checkAllergenBtn");
+        allergenBtn.addEventListener("click", checkAllergen);
+
+        // ✅ 图片上传和处理功能
+        const imageUpload = document.getElementById('imageUpload');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        const analyzeImageBtn = document.getElementById('analyzeImageBtn');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        // 文件上传处理
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        });
+
+        // 拍照按钮处理
+        cameraBtn.addEventListener('click', function() {
+            // 创建文件输入元素来触发相机
+            const cameraInput = document.createElement('input');
+            cameraInput.type = 'file';
+            cameraInput.accept = 'image/*';
+            cameraInput.capture = 'environment'; // 使用后置摄像头
+            
+            cameraInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    handleImageFile(file);
+                }
+            });
+            
+            cameraInput.click();
+        });
+
+        // 处理图片文件
+        function handleImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件！');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                imagePreview.style.display = 'block';
+                uploadStatus.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 分析图片按钮
+        analyzeImageBtn.addEventListener('click', async function() {
+            const imageFile = imageUpload.files[0];
+            if (!imageFile) {
+                alert('请先选择图片！');
+                return;
+            }
+
+            // 显示上传状态
+            uploadStatus.style.display = 'block';
+            document.querySelector('.status-message').textContent = '⏳ 正在识别图片中的文字...';
+
+            try {
+                // 创建FormData对象
+                const formData = new FormData();
+                formData.append('image', imageFile);
+
+                // 调用图片识别API
+                const response = await fetch('/api/ocr', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('OCR识别结果：', result);
+
+                // 更新状态
+                document.querySelector('.status-message').textContent = '✅ 文字识别完成！';
+                
+                // 将识别的文字填入文本框
+                if (result.text) {
+                    document.getElementById('input_text').value = result.text;
+                    
+                    // 2秒后自动开始过敏原检测
+                    setTimeout(() => {
+                        checkAllergen();
+                    }, 2000);
+                } else {
+                    document.querySelector('.status-message').textContent = '⚠️ 未识别到文字，请手动输入';
+                }
+
+            } catch (error) {
+                console.error('图片识别失败：', error);
+                document.querySelector('.status-message').textContent = '❌ 识别失败：' + error.message;
+            }
+        });
+
+        // 移除图片按钮
+        removeImageBtn.addEventListener('click', function() {
+            previewImage.src = '';
+            imagePreview.style.display = 'none';
+            uploadStatus.style.display = 'none';
+            imageUpload.value = '';
+        });
+
+        // 拖拽上传功能
+        const imageUploadSection = document.querySelector('.image-upload-section');
+        
+        if (imageUploadSection) {
+            imageUploadSection.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+
+            imageUploadSection.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+
+            imageUploadSection.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        if (file.size > 10 * 1024 * 1024) {
+                            alert('图片大小不能超过10MB');
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            document.getElementById('input_text').value = e.target.result;
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        alert('请拖拽图片文件！');
+                    }
+                }
+            });
+        }
+
+        // 键盘快捷键支持
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                const activePanel = document.querySelector('.module-panel.show');
+                if (activePanel && activePanel.id === 'allergen') {
+                    e.preventDefault();
+                    checkAllergen();
+                }
+            }
+        });
+
+        // ✅ 过敏原检测函数
+        async function checkAllergen() {
+            let text = document.getElementById("input_text").value;
+            console.log("开始检测过敏原，输入文本：", text);
+
+            if (!text.trim()) {
+                alert("请输入配料表文字！");
+                return;
+            }
+
+            try {
+                let res = await fetch("/api/allergen", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+
+                let result = await res.json();
+                console.log("检测结果：", result);
+                
+                // 格式化显示结果
+                let resultHTML = `<div class="allergen-result">`;
+                
+                // 风险等级显示
+                const riskLevel = result.risk || 'unknown';
+                const riskColors = {
+                    'very_high': '#dc3545',
+                    'high': '#fd7e14',
+                    'medium': '#ffc107',
+                    'low': '#28a745',
+                    'unknown': '#6c757d'
+                };
+                const riskLabels = {
+                    'very_high': '极高风险',
+                    'high': '高风险',
+                    'medium': '中等风险',
+                    'low': '低风险',
+                    'unknown': '未知'
+                };
+                
+                resultHTML += `<div class="risk-level" style="background-color: ${riskColors[riskLevel]}; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px;">`;
+                resultHTML += `<strong>风险等级：${riskLabels[riskLevel]}</strong>`;
+                resultHTML += `</div>`;
+                
+                // 检测到的过敏原
+                if (result.hits && result.hits.length > 0) {
+                    resultHTML += `<div class="detected-allergens" style="margin-bottom: 15px;">`;
+                    resultHTML += `<h4>🚨 检测到的过敏原（${result.hits.length}种）</h4>`;
+                    
+                    if (result.details && result.details.length > 0) {
+                        result.details.forEach(detail => {
+                            const severityColors = {
+                                'high': '#dc3545',
+                                'medium': '#fd7e14',
+                                'low': '#28a745'
+                            };
+                            
+                            resultHTML += `<div class="allergen-item" style="border-left: 4px solid ${severityColors[detail.severity] || '#6c757d'}; padding: 8px; margin: 8px 0; background-color: #f8f9fa;">`;
+                            resultHTML += `<strong>${detail.name}</strong> (${detail.category})<br>`;
+                            resultHTML += `<small>匹配关键词：${detail.matched_keywords.join(', ')}</small><br>`;
+                            resultHTML += `<em>${detail.description}</em>`;
+                            resultHTML += `</div>`;
+                        });
+                    } else {
+                        resultHTML += `<p>检测到的过敏原：${result.hits.join(', ')}</p>`;
+                    }
+                    resultHTML += `</div>`;
+                } else {
+                    resultHTML += `<div class="no-allergens" style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px;">`;
+                    resultHTML += `✅ 未检测到已知过敏原`;
+                    resultHTML += `</div>`;
+                }
+                
+                // 交叉污染警告
+                if (result.cross_contamination_warnings && result.cross_contamination_warnings.length > 0) {
+                    resultHTML += `<div class="cross-contamination" style="background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 15px;">`;
+                    resultHTML += `<h5>⚠️ 可能的交叉污染风险</h5>`;
+                    resultHTML += `<ul>`;
+                    result.cross_contamination_warnings.forEach(warning => {
+                        resultHTML += `<li>${warning}</li>`;
+                    });
+                    resultHTML += `</ul>`;
+                    resultHTML += `</div>`;
+                }
+                
+                // 统计信息
+                if (result.total_allergens !== undefined) {
+                    resultHTML += `<div class="statistics" style="background-color: #e9ecef; padding: 10px; border-radius: 5px; font-size: 14px;">`;
+                    resultHTML += `<strong>统计信息：</strong>`;
+                    resultHTML += `总计${result.total_allergens}种过敏原 `;
+                    if (result.high_risk_count > 0) resultHTML += `| 高风险${result.high_risk_count}种 `;
+                    if (result.medium_risk_count > 0) resultHTML += `| 中等风险${result.medium_risk_count}种 `;
+                    resultHTML += `</div>`;
+                }
+                
+                resultHTML += `</div>`;
+                
+                document.getElementById("result").innerHTML = resultHTML;
+                
+            } catch (error) {
+                console.error("请求失败：", error);
+                document.getElementById("result").innerText = "请求失败：" + error.message;
+            }
+        }
+        // ✅ 检查数据库连接状态
+        async function checkDatabaseConnection() {
+            console.log("检查数据库连接状态...");
+            
+            try {
+                let res = await fetch("/api/test_db_connection");
+                let result = await res.json();
+                
+                console.log("数据库连接检查结果:", result);
+                
+                if (result.status === "success") {
+                    console.log("✅ 数据库连接正常");
+                    return true;
+                } else {
+                    console.error("❌ 数据库连接失败:", result.message);
+                    alert("数据库连接失败: " + result.message);
+                    return false;
+                }
+                
+            } catch (error) {
+                console.error("数据库连接检查失败:", error);
+                alert("无法连接到数据库，请检查服务器配置");
+                return false;
+            }
+        }
+
+        // ✅ 测试数据插入功能
+        async function testInsertData() {
+            console.log("=== 开始测试数据插入功能 ===");
+            
+            const testData = {
+                username: "测试用户",
+                gender: "male", 
+                height: "175",
+                weight: "70"
+            };
+            
+            console.log("测试数据:", testData);
+            
+            try {
+                let res = await fetch("/api/insert_data", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(testData)
+                });
+                
+                console.log("测试响应状态:", res.status, res.statusText);
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error("测试失败:", errorText);
+                    alert("测试失败: " + errorText);
+                    return false;
+                }
+                
+                let result = await res.json();
+                console.log("测试结果:", result);
+                alert("测试成功: " + result.message);
+                return true;
+                
+            } catch (error) {
+                console.error("测试异常:", error);
+                alert("测试异常: " + error.message);
+                return false;
+            }
+        }
+        
+        // ✅ 用户信息记录函数
+        async function RecordBasicInfo() {
+            let height = document.getElementById("height_input").value.trim();
+            let weight = document.getElementById("weight_input").value.trim();
+            
+            // 输入验证
+            if (!height || !weight) {
+                alert("请输入完整的身高和体重信息！");
+                return;
+            }
+            
+            if (isNaN(height) || isNaN(weight)) {
+                alert("身高和体重必须是数字！");
+                return;
+            }
+
+            console.log("开始记录用户信息，身高:", height, "体重:", weight);
+
+            try {
+                console.log("准备发送数据到/api/insert_data");
+                console.log("发送的数据:", { username:"Bob",gender:"male",height: height, weight: weight });
+                
+                let res = await fetch("/api/insert_data", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username:"Bob",gender:"male",height: height, weight: weight })
+                });
+
+                console.log("响应状态:", res.status, res.statusText);
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error("服务器返回错误:", errorText);
+                    throw new Error(`HTTP错误! 状态: ${res.status}, 详情: ${errorText}`);
+                }
+
+                let result = await res.json();
+                console.log("记录结果：", result);
+                
+                if (result.status === "success") {
+                    alert("✅ " + result.message);
+                } else {
+                    alert("❌ 错误: " + (result.error || "未知错误"));
+                }
+
+                
+            } catch (error) {
+                console.error("记录失败：", error);
+                console.error("错误详情:", error.stack);
+                alert("❌ 记录失败：" + error.message);
+            } finally {
+                console.log("数据插入流程结束");
+            }
+        }
+    </script>
+</body>
+
+</html>

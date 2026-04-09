@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>食品识别系统 - 专业版</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* 新增样式 */
+        .loading { opacity: 0.6; pointer-events: none; }
+        .error-message { color: #e74c3c; background: #fdf2f2; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success-message { color: #27ae60; background: #f2fdf2; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .api-status { position: fixed; top: 20px; right: 20px; padding: 10px; border-radius: 5px; font-size: 12px; }
+        .api-status.connected { background: #27ae60; color: white; }
+        .api-status.disconnected { background: #e74c3c; color: white; }
+        .stats-panel { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .stat-item { display: inline-block; margin: 0 15px; }
+        .stat-value { font-weight: bold; color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- API状态指示器 -->
+        <div id="apiStatus" class="api-status disconnected">连接中...</div>
+        
+        <!-- 左侧：按钮导航 -->
+        <aside class="left-panel">
+            <h2>功能模块</h2>
+            <button class="nav-btn active" data-target="ocr">OCR识别</button>
+            <button class="nav-btn" data-target="allergen">过敏原检测</button>
+            <button class="nav-btn" data-target="nutrition">营养建议</button>
+            <button class="nav-btn" data-target="history">历史记录</button>
+            <button class="nav-btn" data-target="settings">系统设置</button>
+            <button class="nav-btn" data-target="userinfo">用户信息</button>
+        </aside>
+
+        <div class="divider"></div>
+
+        <!-- 右侧：内容区 -->
+        <main class="right-panel">
+            <section class="module-panel show" id="ocr">
+                <h1>OCR识别</h1>
+                <p>上传食品配料图，提取文字。</p>
+                <div class="upload-area" style="border: 2px dashed #3498db; padding: 40px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                    <p>拖拽图片到此处或点击选择</p>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <button onclick="document.getElementById('imageInput').click()" style="margin-top: 10px;">选择图片</button>
+                </div>
+            </section>
+
+            <section class="module-panel" id="allergen">
+                <h1>过敏原检测</h1>
+                <p>根据识别文字匹配过敏原关键词并给出风险等级。</p>
+
+                <textarea id="input_text" rows="4" placeholder="在这里输入配料表文字，例如：小麦粉、花生、牛奶、鸡蛋..."></textarea>
+                <button id="checkAllergenBtn" class="btn-primary">开始检测</button>
+                
+                <!-- 统计面板 -->
+                <div id="statsPanel" class="stats-panel" style="display: none;">
+                    <h4>检测统计</h4>
+                    <div class="stat-item">风险等级: <span id="riskLevel" class="stat-value">-</span></div>
+                    <div class="stat-item">发现过敏原: <span id="allergenCount" class="stat-value">0</span></div>
+                    <div class="stat-item">检测时间: <span id="detectTime" class="stat-value">-</span></div>
+                </div>
+                
+                <div id="result" style="margin-top: 15px;"></div>
+            </section>
+
+            <section class="module-panel" id="nutrition">
+                <h1>营养建议</h1>
+                <p>结合配料与规则库给出营养提醒。</p>
+            </section>
+
+            <section class="module-panel" id="history">
+                <h1>历史记录</h1>
+                <p>展示用户过往识别结果。</p>
+                <div id="historyList"></div>
+            </section>
+
+            <section class="module-panel" id="settings">
+                <h1>系统设置</h1>
+                <p>配置阈值、词典路径、用户过敏偏好等。</p>
+                
+                <div style="margin: 20px 0;">
+                    <label>API限流设置：</label>
+                    <select id="rateLimitSetting">
+                        <option value="normal">正常 (10次/分钟)</option>
+                        <option value="relaxed">宽松 (20次/分钟)</option>
+                        <option value="strict">严格 (5次/分钟)</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="module-panel" id="userinfo">
+                <h1>用户信息录入</h1>
+                <p>管理您的基本信息和健康数据</p>
+                
+                <div style="margin: 20px 0;">
+                    <label>身高 (cm):</label>
+                    <input type="number" id="height_input" placeholder="170" min="50" max="250" style="width: 100%; padding: 8px; margin: 5px 0;">
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <label>体重 (kg):</label>
+                    <input type="number" id="weight_input" placeholder="65" min="20" max="300" style="width: 100%; padding: 8px; margin: 5px 0;">
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <label>性别:</label>
+                    <div style="margin: 10px 0;">
+                        <label style="margin-right: 20px;">
+                            <input type="radio" name="gender" value="male" checked> 男
+                        </label>
+                        <label>
+                            <input type="radio" name="gender" value="female"> 女
+                        </label>
+                    </div>
+                </div>
+                
+                <button id="BasicInfoInputBtn" class="btn-success">录入基本信息</button>
+                <div id="userInfoResult" style="margin-top: 15px;"></div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // 应用配置
+        const AppConfig = {
+            API_BASE_URL: '',
+            MAX_RETRY_ATTEMPTS: 3,
+            RETRY_DELAY: 1000,
+            ENABLE_LOGGING: true
+        };
+
+        // 工具函数
+        class Utils {
+            static log(message, type = 'info') {
+                if (AppConfig.ENABLE_LOGGING) {
+                    console[type](`[${new Date().toLocaleTimeString()}] ${message}`);
+                }
+            }
+
+            static async delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            static formatTime(ms) {
+                if (ms < 1000) return `${ms}ms`;
+                return `${(ms / 1000).toFixed(2)}s`;
+            }
+
+            static validateNumber(value, min, max) {
+                const num = parseFloat(value);
+                return !isNaN(num) && num >= min && num <= max;
+            }
+        }
+
+        // API客户端
+        class ApiClient {
+            constructor() {
+                this.baseUrl = AppConfig.API_BASE_URL;
+                this.retryAttempts = AppConfig.MAX_RETRY_ATTEMPTS;
+            }
+
+            async request(endpoint, options = {}) {
+                const url = `${this.baseUrl}${endpoint}`;
+                const defaultOptions = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                };
+
+                const requestOptions = { ...defaultOptions, ...options };
+                
+                if (requestOptions.body && typeof requestOptions.body === 'object') {
+                    requestOptions.body = JSON.stringify(requestOptions.body);
+                }
+
+                for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
+                    try {
+                        Utils.log(`API请求: ${endpoint} (尝试 ${attempt}/${this.retryAttempts})`);
+                        
+                        const startTime = performance.now();
+                        const response = await fetch(url, requestOptions);
+                        const endTime = performance.now();
+                        
+                        Utils.log(`API响应: ${endpoint} - ${response.status} (${Utils.formatTime(endTime - startTime)})`);
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        
+                        if (data.status === 'error') {
+                            throw new Error(data.message || 'API返回错误');
+                        }
+
+                        return data;
+                        
+                    } catch (error) {
+                        Utils.log(`API请求失败: ${endpoint} - ${error.message}`, 'error');
+                        
+                        if (attempt === this.retryAttempts) {
+                            throw error;
+                        }
+                        
+                        await Utils.delay(AppConfig.RETRY_DELAY * attempt);
+                    }
+                }
+            }
+
+            async detectAllergens(text) {
+                return this.request('/api/allergen', {
+                    method: 'POST',
+                    body: { text }
+                });
+            }
+
+            async recordUserInfo(userInfo) {
+                return this.request('/api/record_info', {
+                    method: 'POST',
+                    body: userInfo
+                });
+            }
+
+            async checkHealth() {
+                return this.request('/health');
+            }
+        }
+
+        // 应用状态管理
+        class AppState {
+            constructor() {
+                this.history = this.loadHistory();
+                this.userInfo = this.loadUserInfo();
+            }
+
+            loadHistory() {
+                try {
+                    const saved = localStorage.getItem('allergen_history');
+                    return saved ? JSON.parse(saved) : [];
+                } catch (e) {
+                    Utils.log('加载历史记录失败', 'error');
+                    return [];
+                }
+            }
+
+            saveHistory() {
+                try {
+                    localStorage.setItem('allergen_history', JSON.stringify(this.history));
+                } catch (e) {
+                    Utils.log('保存历史记录失败', 'error');
+                }
+            }
+
+            loadUserInfo() {
+                try {
+                    const saved = localStorage.getItem('user_info');
+                    return saved ? JSON.parse(saved) : {};
+                } catch (e) {
+                    Utils.log('加载用户信息失败', 'error');
+                    return {};
+                }
+            }
+
+            saveUserInfo() {
+                try {
+                    localStorage.setItem('user_info', JSON.stringify(this.userInfo));
+                } catch (e) {
+                    Utils.log('保存用户信息失败', 'error');
+                }
+            }
+
+            addToHistory(item) {
+                item.timestamp = new Date().toISOString();
+                this.history.unshift(item);
+                if (this.history.length > 50) {
+                    this.history = this.history.slice(0, 50);
+                }
+                this.saveHistory();
+            }
+        }
+
+        // UI管理器
+        class UIManager {
+            constructor() {
+                this.apiStatusEl = document.getElementById('apiStatus');
+                this.resultEl = document.getElementById('result');
+                this.userInfoResultEl = document.getElementById('userInfoResult');
+            }
+
+            showMessage(container, message, type = 'info') {
+                container.innerHTML = `<div class="${type}-message">${message}</div>`;
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            }
+
+            updateApiStatus(connected) {
+                if (connected) {
+                    this.apiStatusEl.textContent = 'API已连接';
+                    this.apiStatusEl.className = 'api-status connected';
+                } else {
+                    this.apiStatusEl.textContent = 'API未连接';
+                    this.apiStatusEl.className = 'api-status disconnected';
+                }
+            }
+
+            showStats(data, detectTime) {
+                document.getElementById('statsPanel').style.display = 'block';
+                document.getElementById('riskLevel').textContent = data.risk;
+                document.getElementById('allergenCount').textContent = data.total_found;
+                document.getElementById('detectTime').textContent = Utils.formatTime(detectTime);
+            }
+
+            hideStats() {
+                document.getElementById('statsPanel').style.display = 'none';
+            }
+
+            renderHistory(history) {
+                const historyEl = document.getElementById('historyList');
+                if (history.length === 0) {
+                    historyEl.innerHTML = '<p>暂无历史记录</p>';
+                    return;
+                }
+
+                historyEl.innerHTML = history.map(item => `
+                    <div class="history-item" style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                        <div><strong>检测时间:</strong> ${new Date(item.timestamp).toLocaleString()}</div>
+                        <div><strong>风险等级:</strong> <span style="color: ${this.getRiskColor(item.risk)}">${item.risk}</span></div>
+                        <div><strong>发现过敏原:</strong> ${item.total_found} 种</div>
+                        <div><strong>检测结果:</strong> ${item.hits.join(', ') || '无'}</div>
+                    </div>
+                `).join('');
+            }
+
+            getRiskColor(risk) {
+                const colors = {
+                    'low': '#27ae60',
+                    'medium': '#f39c12',
+                    'high': '#e74c3c'
+                };
+                return colors[risk] || '#333';
+            }
+        }
+
+        // 主要应用类
+        class FoodAnalysisApp {
+            constructor() {
+                this.apiClient = new ApiClient();
+                this.appState = new AppState();
+                this.uiManager = new UIManager();
+                this.currentPanel = 'ocr';
+                
+                this.init();
+            }
+
+            async init() {
+                Utils.log('应用初始化开始');
+                
+                // 检查API连接
+                await this.checkApiConnection();
+                
+                // 绑定事件
+                this.bindEvents();
+                
+                // 渲染历史记录
+                this.uiManager.renderHistory(this.appState.history);
+                
+                // 加载用户信息
+                this.loadUserInfoToForm();
+                
+                Utils.log('应用初始化完成');
+            }
+
+            async checkApiConnection() {
+                try {
+                    await this.apiClient.checkHealth();
+                    this.uiManager.updateApiStatus(true);
+                    Utils.log('API连接正常');
+                } catch (error) {
+                    this.uiManager.updateApiStatus(false);
+                    Utils.log('API连接失败: ' + error.message, 'error');
+                }
+            }
+
+            bindEvents() {
+                // 导航按钮事件
+                const buttons = document.querySelectorAll(".nav-btn");
+                const panels = document.querySelectorAll(".module-panel");
+
+                buttons.forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const targetId = btn.dataset.target;
+                        this.currentPanel = targetId;
+                        
+                        buttons.forEach(b => b.classList.remove("active"));
+                        btn.classList.add("active");
+
+                        panels.forEach(p => p.classList.remove("show"));
+                        document.getElementById(targetId).classList.add("show");
+                        
+                        // 特殊处理
+                        if (targetId === 'history') {
+                            this.uiManager.renderHistory(this.appState.history);
+                        }
+                    });
+                });
+
+                // 过敏原检测事件
+                document.getElementById('checkAllergenBtn').addEventListener('click', () => {
+                    this.detectAllergens();
+                });
+
+                // 用户信息录入事件
+                document.getElementById('BasicInfoInputBtn').addEventListener('click', () => {
+                    this.recordUserInfo();
+                });
+
+                // 图片上传事件（预留）
+                document.getElementById('imageInput')?.addEventListener('change', (e) => {
+                    this.handleImageUpload(e.target.files);
+                });
+            }
+
+            async detectAllergens() {
+                const text = document.getElementById('input_text').value.trim();
+                const resultEl = document.getElementById('result');
+                const button = document.getElementById('checkAllergenBtn');
+
+                if (!text) {
+                    this.uiManager.showMessage(resultEl, '请输入配料表文字！', 'error');
+                    return;
+                }
+
+                // 显示加载状态
+                button.textContent = '检测中...';
+                button.disabled = true;
+                this.uiManager.hideStats();
+
+                try {
+                    const startTime = performance.now();
+                    const response = await this.apiClient.detectAllergens(text);
+                    const endTime = performance.now();
+                    const detectTime = endTime - startTime;
+
+                    Utils.log(`过敏原检测完成，耗时: ${Utils.formatTime(detectTime)}`);
+
+                    if (response.status === 'success') {
+                        const data = response.data;
+                        
+                        // 显示统计信息
+                        this.uiManager.showStats(data, detectTime);
+                        
+                        // 显示详细结果
+                        let resultHTML = '<div style="margin-top: 15px;">';
+                        
+                        if (data.total_found === 0) {
+                            resultHTML += '<div class="success-message">✅ 未检测到常见过敏原，食品安全！</div>';
+                        } else {
+                            resultHTML += `<div class="error-message">⚠️ 检测到 ${data.total_found} 种过敏原，风险等级：<strong style="color: ${this.uiManager.getRiskColor(data.risk)}">${data.risk}</strong></div>`;
+                            
+                            if (data.details && data.details.length > 0) {
+                                resultHTML += '<h4>检测详情：</h4><ul>';
+                                data.details.forEach(detail => {
+                                    resultHTML += `<li><strong>${detail.allergen}</strong>: 发现关键词 ${detail.keywords_found.join(', ')}</li>`;
+                                });
+                                resultHTML += '</ul>';
+                            }
+                        }
+                        
+                        resultHTML += '</div>';
+                        resultEl.innerHTML = resultHTML;
+                        
+                        // 添加到历史记录
+                        this.appState.addToHistory({
+                            text: text,
+                            ...data
+                        });
+                        
+                    } else {
+                        this.uiManager.showMessage(resultEl, response.message || '检测失败', 'error');
+                    }
+                    
+                } catch (error) {
+                    Utils.log('过敏原检测错误: ' + error.message, 'error');
+                    this.uiManager.showMessage(resultEl, '检测失败: ' + error.message, 'error');
+                } finally {
+                    button.textContent = '开始检测';
+                    button.disabled = false;
+                }
+            }
+
+            async recordUserInfo() {
+                const height = document.getElementById('height_input').value.trim();
+                const weight = document.getElementById('weight_input').value.trim();
+                const gender = document.querySelector('input[name="gender"]:checked')?.value;
+                const resultEl = document.getElementById('userInfoResult');
+                const button = document.getElementById('BasicInfoInputBtn');
+
+                // 输入验证
+                if (!height || !weight) {
+                    this.uiManager.showMessage(resultEl, '请输入完整的身高和体重信息！', 'error');
+                    return;
+                }
+
+                if (!Utils.validateNumber(height, 50, 250)) {
+                    this.uiManager.showMessage(resultEl, '身高必须在50-250cm之间！', 'error');
+                    return;
+                }
+
+                if (!Utils.validateNumber(weight, 20, 300)) {
+                    this.uiManager.showMessage(resultEl, '体重必须在20-300kg之间！', 'error');
+                    return;
+                }
+
+                // 显示加载状态
+                button.textContent = '录入中...';
+                button.disabled = true;
+
+                try {
+                    const userInfo = {
+                        height: parseFloat(height),
+                        weight: parseFloat(weight),
+                        gender: gender
+                    };
+
+                    const response = await this.apiClient.recordUserInfo(userInfo);
+
+                    if (response.status === 'success') {
+                        this.uiManager.showMessage(resultEl, response.message, 'success');
+                        
+                        // 更新应用状态
+                        this.appState.userInfo = userInfo;
+                        this.appState.saveUserInfo();
+                        
+                        Utils.log('用户信息录入成功');
+                    } else {
+                        this.uiManager.showMessage(resultEl, response.message || '录入失败', 'error');
+                    }
+                    
+                } catch (error) {
+                    Utils.log('用户信息录入错误: ' + error.message, 'error');
+                    this.uiManager.showMessage(resultEl, '录入失败: ' + error.message, 'error');
+                } finally {
+                    button.textContent = '录入基本信息';
+                    button.disabled = false;
+                }
+            }
+
+            loadUserInfoToForm() {
+                const userInfo = this.appState.userInfo;
+                if (userInfo.height) {
+                    document.getElementById('height_input').value = userInfo.height;
+                }
+                if (userInfo.weight) {
+                    document.getElementById('weight_input').value = userInfo.weight;
+                }
+                if (userInfo.gender) {
+                    const genderRadio = document.querySelector(`input[name="gender"][value="${userInfo.gender}"]`);
+                    if (genderRadio) {
+                        genderRadio.checked = true;
+                    }
+                }
+            }
+
+            handleImageUpload(files) {
+                if (files && files.length > 0) {
+                    Utils.log(`选择图片: ${files[0].name}`);
+                    // 这里可以实现OCR功能
+                    this.uiManager.showMessage(
+                        document.querySelector('#ocr .upload-area'),
+                        'OCR功能开发中，敬请期待！',
+                        'info'
+                    );
+                }
+            }
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            window.foodApp = new FoodAnalysisApp();
+        });
+    </script>
+</body>
+</html>
